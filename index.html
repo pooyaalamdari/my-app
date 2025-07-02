@@ -91,6 +91,7 @@
         }
 
         #imagePreviewContainer {
+            /* Keep these CSS rules as they define the PREVIEW appearance */
             width: 1080px;
             height: 1080px;
             background-color: #1b1c1d;
@@ -136,14 +137,17 @@
         /* Responsive adjustments */
         @media (max-width: 1100px) {
             #imagePreviewContainer {
-                /* IMPORTANT: These are for DISPLAY ONLY. The download function will override these temporarily. */
+                /* These dimensions are for the DISPLAY of the preview on smaller screens.
+                   The DOWNLOAD will still be 1080x1080 due to JS override. */
                 width: 90vw;
                 height: 90vw;
-                max-width: 1080px;
+                max-width: 1080px; /* Cap at original size */
                 max-height: 1080px;
             }
             #imagePreviewText {
                  padding: 5vw;
+                 /* For small screens, you might need to adjust max-width/height if text wraps too much */
+                 /* max-width: 80%; */
             }
         }
         @media (max-width: 768px) {
@@ -274,7 +278,7 @@
 
         // Download button logic
         downloadBtn.addEventListener('click', () => {
-            // Store original styles of imagePreviewText
+            // Store original styles of imagePreviewText to restore them later
             const originalFontSize = imagePreviewText.style.fontSize;
             const originalPadding = imagePreviewText.style.padding;
             const originalTextAlign = imagePreviewText.style.textAlign;
@@ -282,32 +286,28 @@
             const originalMaxWidth = imagePreviewText.style.maxWidth;
             const originalMaxHeight = imagePreviewText.style.maxHeight;
 
-            // Store original styles of imagePreviewContainer (especially width/height for responsive)
-            const originalContainerWidth = imagePreviewContainer.style.width;
-            const originalContainerHeight = imagePreviewContainer.style.height;
-
-            // Temporarily set fixed dimensions for imagePreviewContainer for html2canvas
-            imagePreviewContainer.style.width = '1080px';
-            imagePreviewContainer.style.height = '1080px';
-
-            // Apply specific styles for capturing on imagePreviewText
+            // IMPORTANT: These are the styles html2canvas will use when capturing
+            // They override the actual displayed styles for the purpose of capture.
             imagePreviewText.style.fontSize = fontSizeSlider.value + 'px';
             imagePreviewText.style.padding = '50px';
             imagePreviewText.style.textAlign = 'center';
             imagePreviewText.style.lineHeight = '1.5';
-            imagePreviewText.style.maxWidth = '90%'; // Keep these for proper centering within 1080px container
+            imagePreviewText.style.maxWidth = '90%'; // Keep these for proper centering within the FINAL 1080px image
             imagePreviewText.style.maxHeight = '90%';
 
-
+            // No need to temporarily change imagePreviewContainer dimensions in CSS.
+            // html2canvas will directly generate the desired output size.
             html2canvas(imagePreviewContainer, {
                 backgroundColor: null,
+                // These parameters directly control the output canvas size
                 width: 1080,
                 height: 1080,
-                scale: 2, // Increase scale for higher quality image
-                useCORS: true // Important for handling external resources if any
+                scale: 2, // Capture at 2x resolution for better quality, then scale down to 1080x1080 if needed
+                useCORS: true
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'text_image.png';
+                // Use canvas.toDataURL directly, as its dimensions are already controlled by html2canvas options
                 link.href = canvas.toDataURL('image/png');
                 link.click();
 
@@ -318,10 +318,6 @@
                 imagePreviewText.style.lineHeight = originalLineHeight;
                 imagePreviewText.style.maxWidth = originalMaxWidth;
                 imagePreviewText.style.maxHeight = originalMaxHeight;
-
-                // Restore original styles of imagePreviewContainer
-                imagePreviewContainer.style.width = originalContainerWidth;
-                imagePreviewContainer.style.height = originalContainerHeight;
 
             }).catch(error => {
                 console.error("Oops, something went wrong!", error);
