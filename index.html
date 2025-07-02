@@ -91,7 +91,7 @@
         }
 
         #imagePreviewContainer {
-            /* Keep these CSS rules as they define the PREVIEW appearance */
+            /* Default dimensions for larger screens */
             width: 1080px;
             height: 1080px;
             background-color: #1b1c1d;
@@ -101,21 +101,20 @@
             overflow: hidden;
             position: relative;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-            text-align: center; /* Ensures text is centered within imagePreviewText if it doesn't wrap full width */
         }
 
         #imagePreviewText {
             color: white;
             font-family: 'Far_Rooznameh', sans-serif;
             font-size: 48px; /* Default font size */
-            max-width: 90%; /* Allow text to wrap, but not take up full width to keep it centered */
-            max-height: 90%; /* Similar for height */
+            max-width: 90%; /* Allows text to wrap and stay centered */
+            max-height: 90%; /* Prevents text from overflowing vertically too much */
             text-align: center; /* Center text lines within itself */
-            padding: 50px;
+            padding: 50px; /* Padding inside the text block */
             word-wrap: break-word;
             white-space: pre-wrap;
             line-height: 1.5;
-            box-sizing: border-box; /* Include padding in width/height */
+            box-sizing: border-box; /* Include padding in max-width/height */
         }
 
         .highlighted {
@@ -134,20 +133,18 @@
             background-color: #218838;
         }
 
-        /* Responsive adjustments */
+        /* Responsive adjustments for the PREVIEW DISPLAY */
         @media (max-width: 1100px) {
             #imagePreviewContainer {
-                /* These dimensions are for the DISPLAY of the preview on smaller screens.
-                   The DOWNLOAD will still be 1080x1080 due to JS override. */
-                width: 90vw;
+                width: 90vw; /* On smaller screens, display the preview smaller */
                 height: 90vw;
-                max-width: 1080px; /* Cap at original size */
+                max-width: 1080px; /* Ensure it doesn't grow beyond original size */
                 max-height: 1080px;
             }
             #imagePreviewText {
-                 padding: 5vw;
-                 /* For small screens, you might need to adjust max-width/height if text wraps too much */
-                 /* max-width: 80%; */
+                 padding: 5vw; /* Adjust padding for smaller display */
+                 /* You might need to adjust font size responsively if text becomes too large */
+                 /* font-size: 4vw; */
             }
         }
         @media (max-width: 768px) {
@@ -277,8 +274,8 @@
         });
 
         // Download button logic
-        downloadBtn.addEventListener('click', () => {
-            // Store original styles of imagePreviewText to restore them later
+        downloadBtn.addEventListener('click', async () => { // Use async here
+            // Store original styles of imagePreviewText
             const originalFontSize = imagePreviewText.style.fontSize;
             const originalPadding = imagePreviewText.style.padding;
             const originalTextAlign = imagePreviewText.style.textAlign;
@@ -286,32 +283,50 @@
             const originalMaxWidth = imagePreviewText.style.maxWidth;
             const originalMaxHeight = imagePreviewText.style.maxHeight;
 
-            // IMPORTANT: These are the styles html2canvas will use when capturing
-            // They override the actual displayed styles for the purpose of capture.
+            // Store original dimensions of imagePreviewContainer to restore later
+            const originalContainerWidth = imagePreviewContainer.style.width;
+            const originalContainerHeight = imagePreviewContainer.style.height;
+            const originalContainerMaxWidth = imagePreviewContainer.style.maxWidth; // In case media query was active
+            const originalContainerMaxHeight = imagePreviewContainer.style.maxHeight; // In case media query was active
+
+            // Temporarily set imagePreviewContainer to its desired output size and remove max-width/height
+            // This is crucial to ensure html2canvas captures at 1080x1080 from the DOM
+            imagePreviewContainer.style.width = '1080px';
+            imagePreviewContainer.style.height = '1080px';
+            imagePreviewContainer.style.maxWidth = '1080px'; // Override any media query
+            imagePreviewContainer.style.maxHeight = '1080px'; // Override any media query
+
+
+            // Apply specific styles for capturing on imagePreviewText
             imagePreviewText.style.fontSize = fontSizeSlider.value + 'px';
             imagePreviewText.style.padding = '50px';
             imagePreviewText.style.textAlign = 'center';
             imagePreviewText.style.lineHeight = '1.5';
-            imagePreviewText.style.maxWidth = '90%'; // Keep these for proper centering within the FINAL 1080px image
+            // These max-width/height help in centering the text within the 1080x1080 container
+            imagePreviewText.style.maxWidth = '90%';
             imagePreviewText.style.maxHeight = '90%';
 
-            // No need to temporarily change imagePreviewContainer dimensions in CSS.
-            // html2canvas will directly generate the desired output size.
-            html2canvas(imagePreviewContainer, {
-                backgroundColor: null,
-                // These parameters directly control the output canvas size
-                width: 1080,
-                height: 1080,
-                scale: 2, // Capture at 2x resolution for better quality, then scale down to 1080x1080 if needed
-                useCORS: true
-            }).then(canvas => {
+            // A small delay to ensure DOM has rendered with new dimensions (important for mobile)
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            try {
+                const canvas = await html2canvas(imagePreviewContainer, {
+                    backgroundColor: null, // Transparent background for the container itself
+                    // We don't need to specify width/height here anymore, as the element's CSS is now 1080x1080
+                    scale: 2, // Capture at 2x resolution for better quality, then effectively downscale by browser/image saving
+                    useCORS: true
+                });
+
                 const link = document.createElement('a');
                 link.download = 'text_image.png';
-                // Use canvas.toDataURL directly, as its dimensions are already controlled by html2canvas options
                 link.href = canvas.toDataURL('image/png');
                 link.click();
 
-                // Restore original styles of imagePreviewText after capture
+            } catch (error) {
+                console.error("Oops, something went wrong!", error);
+                alert('خطایی در تولید تصویر رخ داد. لطفاً دوباره تلاش کنید.');
+            } finally {
+                // IMPORTANT: Restore original styles of imagePreviewText and imagePreviewContainer after capture
                 imagePreviewText.style.fontSize = originalFontSize;
                 imagePreviewText.style.padding = originalPadding;
                 imagePreviewText.style.textAlign = originalTextAlign;
@@ -319,10 +334,11 @@
                 imagePreviewText.style.maxWidth = originalMaxWidth;
                 imagePreviewText.style.maxHeight = originalMaxHeight;
 
-            }).catch(error => {
-                console.error("Oops, something went wrong!", error);
-                alert('خطایی در تولید تصویر رخ داد. لطفاً دوباره تلاش کنید.');
-            });
+                imagePreviewContainer.style.width = originalContainerWidth;
+                imagePreviewContainer.style.height = originalContainerHeight;
+                imagePreviewContainer.style.maxWidth = originalContainerMaxWidth;
+                imagePreviewContainer.style.maxHeight = originalContainerMaxHeight;
+            }
         });
 
         // Initial setup
