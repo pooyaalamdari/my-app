@@ -107,7 +107,6 @@
             color: white;
             font-family: 'Far_Rooznameh', sans-serif;
             font-size: 48px; /* Default font size */
-            /* Remove width: 100%; and height: 100%; */
             max-width: 90%; /* Allow text to wrap, but not take up full width to keep it centered */
             max-height: 90%; /* Similar for height */
             text-align: center; /* Center text lines within itself */
@@ -137,8 +136,9 @@
         /* Responsive adjustments */
         @media (max-width: 1100px) {
             #imagePreviewContainer {
-                width: 90vw; /* Take full viewport width up to a limit */
-                height: 90vw; /* Keep aspect ratio */
+                /* IMPORTANT: These are for DISPLAY ONLY. The download function will override these temporarily. */
+                width: 90vw;
+                height: 90vw;
                 max-width: 1080px;
                 max-height: 1080px;
             }
@@ -274,18 +274,28 @@
 
         // Download button logic
         downloadBtn.addEventListener('click', () => {
-            // Temporarily adjust styles for HTML2Canvas to render correctly
+            // Store original styles of imagePreviewText
             const originalFontSize = imagePreviewText.style.fontSize;
             const originalPadding = imagePreviewText.style.padding;
             const originalTextAlign = imagePreviewText.style.textAlign;
             const originalLineHeight = imagePreviewText.style.lineHeight;
+            const originalMaxWidth = imagePreviewText.style.maxWidth;
+            const originalMaxHeight = imagePreviewText.style.maxHeight;
 
-            // Apply styles for capturing
+            // Store original styles of imagePreviewContainer (especially width/height for responsive)
+            const originalContainerWidth = imagePreviewContainer.style.width;
+            const originalContainerHeight = imagePreviewContainer.style.height;
+
+            // Temporarily set fixed dimensions for imagePreviewContainer for html2canvas
+            imagePreviewContainer.style.width = '1080px';
+            imagePreviewContainer.style.height = '1080px';
+
+            // Apply specific styles for capturing on imagePreviewText
             imagePreviewText.style.fontSize = fontSizeSlider.value + 'px';
             imagePreviewText.style.padding = '50px';
-            imagePreviewText.style.textAlign = 'center'; // Ensure text is centered for capture
+            imagePreviewText.style.textAlign = 'center';
             imagePreviewText.style.lineHeight = '1.5';
-            imagePreviewText.style.maxWidth = '90%'; // Ensure content is not too wide for centering
+            imagePreviewText.style.maxWidth = '90%'; // Keep these for proper centering within 1080px container
             imagePreviewText.style.maxHeight = '90%';
 
 
@@ -293,21 +303,26 @@
                 backgroundColor: null,
                 width: 1080,
                 height: 1080,
-                scale: 2,
-                useCORS: true
+                scale: 2, // Increase scale for higher quality image
+                useCORS: true // Important for handling external resources if any
             }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = 'text_image.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
 
-                // Restore original styles after capture
+                // Restore original styles of imagePreviewText after capture
                 imagePreviewText.style.fontSize = originalFontSize;
                 imagePreviewText.style.padding = originalPadding;
                 imagePreviewText.style.textAlign = originalTextAlign;
                 imagePreviewText.style.lineHeight = originalLineHeight;
-                imagePreviewText.style.maxWidth = ''; // Clear max-width
-                imagePreviewText.style.maxHeight = ''; // Clear max-height
+                imagePreviewText.style.maxWidth = originalMaxWidth;
+                imagePreviewText.style.maxHeight = originalMaxHeight;
+
+                // Restore original styles of imagePreviewContainer
+                imagePreviewContainer.style.width = originalContainerWidth;
+                imagePreviewContainer.style.height = originalContainerHeight;
+
             }).catch(error => {
                 console.error("Oops, something went wrong!", error);
                 alert('خطایی در تولید تصویر رخ داد. لطفاً دوباره تلاش کنید.');
